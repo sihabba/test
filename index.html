@@ -34,11 +34,19 @@
             box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
         }
         .hidden-section { display: none; }
-        canvas { max-height: 450px !important; width: 100% !important; }
+        canvas { max-height: 400px !important; width: 100% !important; }
         .column-divider {
             height: 1px;
             background: linear-gradient(to right, transparent, #e2e8f0, transparent);
-            margin: 4rem 0;
+            margin: 5rem 0;
+        }
+        /* Fade in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-result {
+            animation: fadeIn 0.8s ease-out forwards;
         }
     </style>
 </head>
@@ -47,10 +55,10 @@
     <!-- Navigation -->
     <nav class="sticky top-0 z-50 w-full px-6 py-4 bg-white/70 backdrop-blur-md border-b border-gray-100">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="text-2xl font-bold tracking-tight">SPC<span class="samsung-blue">Analytics</span> <span class="text-xs font-normal text-gray-400 ml-2">v2.0 Multi-Core</span></div>
+            <div class="text-2xl font-bold tracking-tight">SPC<span class="samsung-blue">Analytics</span> <span class="text-xs font-normal text-gray-400 ml-2 italic">Enterprise Multi-Core</span></div>
             <div class="hidden md:flex space-x-8 text-sm font-medium text-gray-600">
-                <a href="#" class="hover:text-blue-600 transition">다중 분석 모드</a>
-                <a href="#" class="hover:text-blue-600 transition">보고서 생성</a>
+                <a href="#" class="hover:text-blue-600 transition">Dashboard</a>
+                <a href="#" class="hover:text-blue-600 transition">Reporting</a>
             </div>
         </div>
     </nav>
@@ -59,54 +67,67 @@
         
         <!-- Header Section -->
         <header class="text-center mb-16">
-            <h1 class="text-5xl font-bold tracking-tight mb-4">다중 공정 능력 분석</h1>
-            <p class="text-xl text-gray-500 font-light italic">모든 열(A, B, C...)의 데이터를 한 번에 분석하고 시각화합니다.</p>
+            <h1 class="text-5xl font-bold tracking-tight mb-4 italic">Process Capability Analysis</h1>
+            <p class="text-xl text-gray-400 font-light italic">모든 데이터 열(A, B, C, D...)을 자동으로 분석하여 통합 리포트를 생성합니다.</p>
         </header>
 
         <!-- Upload & Controls Section -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <!-- Upload Card -->
-            <div class="glass-card p-8 shadow-sm flex flex-col justify-center items-center border-2 border-dashed border-gray-200 hover:border-blue-400 transition cursor-pointer" id="dropZone">
+            <div class="glass-card p-10 shadow-sm flex flex-col justify-center items-center border-2 border-dashed border-gray-200 hover:border-blue-400 transition cursor-pointer" id="dropZone">
                 <div class="mb-4 p-4 bg-blue-50 rounded-full">
-                    <svg class="w-8 h-8 samsung-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <svg class="w-10 h-10 samsung-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                 </div>
-                <h3 class="text-lg font-semibold mb-2">데이터 파일 업로드</h3>
-                <p class="text-sm text-gray-400 mb-6 text-center italic">열이 여러 개인 파일을 업로드하면<br>자동으로 모든 열을 분석합니다.</p>
+                <h3 class="text-xl font-semibold mb-2">데이터 업로드</h3>
+                <p class="text-sm text-gray-400 mb-6 text-center italic">다중 열이 포함된 CSV 파일을 드래그하거나 선택하세요.<br>(1행: 이름 | 2행: LSL | 3행: USL | 4행+: 데이터)</p>
                 <input type="file" id="fileInput" class="hidden" accept=".csv">
-                <button onclick="document.getElementById('fileInput').click()" class="px-6 py-2 bg-gray-100 rounded-full text-sm font-semibold hover:bg-gray-200 transition">파일 선택</button>
-                <div id="fileStatus" class="mt-4 text-sm font-medium text-green-600 hidden italic"></div>
+                <button onclick="document.getElementById('fileInput').click()" class="px-8 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-black transition">파일 탐색기 열기</button>
+                <div id="fileStatus" class="mt-4 text-sm font-bold text-blue-600 hidden"></div>
             </div>
 
             <!-- Start Button Card -->
-            <div class="glass-card p-8 shadow-sm flex flex-col justify-center items-center">
-                <h3 class="text-lg font-semibold mb-4 text-center">Batch Analysis Engine</h3>
-                <p class="text-sm text-gray-400 mb-8 text-center italic">업로드된 모든 데이터를 일괄 분석합니다.</p>
-                <button id="startBtn" disabled class="w-full py-4 samsung-bg-blue text-white rounded-2xl font-bold text-lg opacity-50 cursor-not-allowed btn-primary">
-                    분석 시작 (Start Batch Analysis)
+            <div class="glass-card p-10 shadow-sm flex flex-col justify-center items-center">
+                <div class="mb-6 text-center">
+                    <h3 class="text-xl font-semibold mb-2 italic">Analysis Engine</h3>
+                    <p class="text-sm text-gray-400 italic">감지된 모든 항목에 대해 일괄 분석을 실행합니다.</p>
+                </div>
+                <button id="startBtn" disabled class="w-full py-5 samsung-bg-blue text-white rounded-2xl font-bold text-xl opacity-50 cursor-not-allowed btn-primary tracking-widest shadow-lg">
+                    분석 시작 (START ANALYSIS)
                 </button>
             </div>
         </section>
 
+        <!-- Summary Statistics (전체 요약 카드 - 선택 사항) -->
+        <div id="summaryDashboard" class="hidden-section mb-12 animate-result">
+            <div class="glass-card p-8 border-l-8 border-gray-800">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Analysis Overview</h3>
+                <div id="summaryCards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <!-- 요약 지표들이 여기에 동적으로 삽입됨 -->
+                </div>
+            </div>
+        </div>
+
         <!-- Container for All Results -->
-        <div id="resultsWrapper" class="space-y-20 pb-20">
-            <!-- 분석 결과 섹션들이 여기에 동적으로 생성됩니다 -->
+        <div id="resultsWrapper" class="space-y-16 pb-20">
+            <!-- 분석 결과 섹션들이 여기에 순차적으로 생성됩니다 -->
         </div>
 
     </main>
 
-    <footer class="py-10 text-center text-gray-400 text-xs border-t border-gray-100">
-        &copy; 2024 SPC Analytics Pro. Enterprise Multi-Analysis Dashboard.
+    <footer class="py-12 text-center text-gray-400 text-xs border-t border-gray-100 italic">
+        &copy; 2024 SPC Analytics Global Standard Edition. All data remains local.
     </footer>
 
     <script>
         let rawData = [];
         let columnsCount = 0;
-        let chartInstances = {};
 
         const fileInput = document.getElementById('fileInput');
         const startBtn = document.getElementById('startBtn');
         const fileStatus = document.getElementById('fileStatus');
         const resultsWrapper = document.getElementById('resultsWrapper');
+        const summaryDashboard = document.getElementById('summaryDashboard');
+        const summaryCards = document.getElementById('summaryCards');
 
         fileInput.addEventListener('change', handleFileUpload);
         startBtn.addEventListener('click', runBatchAnalysis);
@@ -117,18 +138,18 @@
 
             Papa.parse(file, {
                 complete: function(results) {
-                    // 빈 행 제거
-                    rawData = results.data.filter(row => row.some(cell => cell !== ""));
+                    // 유효한 행만 필터링
+                    rawData = results.data.filter(row => row.some(cell => cell.trim() !== ""));
                     
                     if (rawData.length < 4) {
-                        alert("데이터 형식이 올바르지 않습니다. (1행: 이름, 2행: LSL, 3행: USL, 4행+: 데이터)");
+                        alert("파일 형식이 맞지 않습니다. 1행 제목, 2행 LSL, 3행 USL, 4행 이후 데이터가 필요합니다.");
                         return;
                     }
 
-                    // 열 개수 확인
+                    // 총 데이터 열 수 파악
                     columnsCount = rawData[0].length;
 
-                    fileStatus.innerText = `✓ ${file.name} 로드 완료 (${columnsCount}개의 분석 열 감지)`;
+                    fileStatus.innerText = `✓ 로드 완료: ${file.name} (총 ${columnsCount}개 항목 분석 대기)`;
                     fileStatus.classList.remove('hidden');
                     startBtn.disabled = false;
                     startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -139,90 +160,114 @@
         function runBatchAnalysis() {
             if (rawData.length === 0) return;
 
-            // 기존 결과 초기화
+            // 기존 결과 클리어
             resultsWrapper.innerHTML = '';
+            summaryCards.innerHTML = '';
+            summaryDashboard.classList.add('hidden-section');
             
-            // 각 열별로 분석 수행
+            // 각 열(Column)에 대해 분석 실행
             for (let i = 0; i < columnsCount; i++) {
                 analyzeColumn(i);
             }
 
-            // 첫 번째 결과로 부드럽게 스크롤
-            resultsWrapper.scrollIntoView({ behavior: 'smooth' });
+            summaryDashboard.classList.remove('hidden-section');
+            resultsWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function analyzeColumn(colIndex) {
-            const name = rawData[0][colIndex] || `Column ${colIndex + 1}`;
+            const title = rawData[0][colIndex] || `Column ${colIndex + 1}`;
             const lsl = parseFloat(rawData[1][colIndex]);
             const usl = parseFloat(rawData[2][colIndex]);
-            const values = rawData.slice(3).map(row => parseFloat(row[colIndex])).filter(val => !isNaN(val));
-
-            if (values.length === 0) return;
-
-            // 기초 통계 계산
-            const count = values.length;
-            const avg = values.reduce((a, b) => a + b, 0) / count;
-            const sampleVariance = values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / (count - 1);
-            const stdev = Math.sqrt(sampleVariance);
-
-            // SPC 계산
-            const cp = (usl - lsl) / (6 * stdev);
-            const cpk = Math.min((usl - avg) / (3 * stdev), (avg - lsl) / (3 * stdev));
             
-            const popVariance = values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / count;
-            const popStdev = Math.sqrt(popVariance);
-            const pp = (usl - lsl) / (6 * popStdev);
-            const ppk = Math.min((usl - avg) / (3 * popStdev), (avg - lsl) / (3 * popStdev));
+            // 데이터 수집
+            const values = rawData.slice(3)
+                                 .map(row => parseFloat(row[colIndex]))
+                                 .filter(val => !isNaN(val));
 
-            // UI 생성
-            createResultSection(colIndex, name, count, avg, stdev, lsl, usl, cp, cpk, pp, ppk);
+            if (values.length < 2) return; // 데이터 부족 시 스킵
+
+            // 통계 계산
+            const n = values.length;
+            const mean = values.reduce((a, b) => a + b, 0) / n;
+            const sVariance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
+            const sStd = Math.sqrt(sVariance);
+
+            // 공정 능력 지수
+            const cp = (usl - lsl) / (6 * sStd);
+            const cpu = (usl - mean) / (3 * sStd);
+            const cpl = (mean - lsl) / (3 * sStd);
+            const cpk = Math.min(cpu, cpl);
             
-            // 그래프 렌더링 (DOM 생성 후 실행을 위해 setTimeout 사용)
+            // Pp, Ppk (모표준편차 기준)
+            const pVariance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+            const pStd = Math.sqrt(pVariance);
+            const pp = (usl - lsl) / (6 * pStd);
+            const ppk = Math.min((usl - mean) / (3 * pStd), (mean - lsl) / (3 * pStd));
+
+            // 요약 카드 추가
+            addSummaryCard(title, cpk);
+
+            // UI 결과 섹션 생성
+            createResultSection(colIndex, title, n, mean, sStd, lsl, usl, cp, cpk, pp, ppk);
+            
+            // 차트 렌더링
             setTimeout(() => {
-                renderChart(colIndex, avg, stdev, lsl, usl, values);
-            }, 0);
+                renderChart(colIndex, mean, sStd, lsl, usl, values);
+            }, 50);
         }
 
-        function createResultSection(id, name, n, mean, std, lsl, usl, cp, cpk, pp, ppk) {
+        function addSummaryCard(title, cpk) {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center';
+            const statusColor = cpk >= 1.33 ? 'text-blue-600' : (cpk >= 1.0 ? 'text-amber-500' : 'text-red-500');
+            card.innerHTML = `
+                <div class="text-[10px] font-bold text-gray-400 uppercase truncate w-full text-center mb-1">${title}</div>
+                <div class="text-xl font-black ${statusColor}">${cpk.toFixed(2)}</div>
+                <div class="text-[8px] font-bold text-gray-300 uppercase mt-1">Cpk</div>
+            `;
+            summaryCards.appendChild(card);
+        }
+
+        function createResultSection(id, title, n, mean, std, lsl, usl, cp, cpk, pp, ppk) {
             const section = document.createElement('div');
-            section.className = 'animate-in fade-in duration-700';
+            section.className = 'animate-result';
             section.innerHTML = `
-                <div class="text-center mb-10">
-                    <h2 class="text-3xl font-bold border-b-2 border-blue-500 inline-block pb-2 px-12 uppercase tracking-widest text-gray-800">
-                        ${name}
-                    </h2>
+                <div class="text-center mb-8">
+                    <div class="inline-block px-10 py-2 border-b-4 border-blue-500">
+                        <h2 class="text-3xl font-black uppercase tracking-tighter text-gray-800">${title}</h2>
+                    </div>
                 </div>
                 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    <!-- Left: Metrics -->
-                    <div class="lg:col-span-4 space-y-6">
-                        <div class="glass-card p-6 shadow-lg">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Statistical Summary</h4>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    <!-- Left: Metrics Area -->
+                    <div class="lg:col-span-4 flex flex-col space-y-6">
+                        <div class="glass-card p-6 shadow-sm flex-grow">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-l-4 border-gray-200 pl-3">Basic Statistics</h4>
                             <div class="space-y-4">
-                                ${createMetricRow("샘플 갯수 (N)", n.toLocaleString())}
-                                ${createMetricRow("평균 (Mean)", mean.toFixed(4))}
-                                ${createMetricRow("표준편차 (Stdev)", std.toFixed(4))}
-                                ${createMetricRow("LSL", lsl)}
-                                ${createMetricRow("USL", usl)}
+                                ${createRow("Data Count (N)", n.toLocaleString())}
+                                ${createRow("Mean (μ)", mean.toFixed(4))}
+                                ${createRow("Stdev (σ)", std.toFixed(4))}
+                                ${createRow("LSL", lsl.toFixed(2))}
+                                ${createRow("USL", usl.toFixed(2))}
                             </div>
                         </div>
                         
-                        <div class="glass-card p-6 shadow-lg border-l-8 border-blue-500">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Process Capability</h4>
-                            <div class="grid grid-cols-2 gap-3">
-                                ${createSPCCard("Cp", cp)}
-                                ${createSPCCard("Cpk", cpk)}
-                                ${createSPCCard("Pp", pp)}
-                                ${createSPCCard("Ppk", ppk)}
+                        <div class="glass-card p-6 shadow-md border-t-8 border-blue-500">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-l-4 border-blue-200 pl-3">Process Indices</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                ${createIndexBox("Cp", cp)}
+                                ${createIndexBox("Cpk", cpk)}
+                                ${createIndexBox("Pp", pp)}
+                                ${createIndexBox("Ppk", ppk)}
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right: Chart -->
+                    <!-- Right: Visualization Area -->
                     <div class="lg:col-span-8">
-                        <div class="glass-card p-8 shadow-lg h-full flex flex-col">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Distribution Analysis</h4>
-                            <div class="flex-grow">
+                        <div class="glass-card p-8 shadow-sm h-full flex flex-col">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-3">Normal Distribution Chart</h4>
+                            <div class="flex-grow flex items-center">
                                 <canvas id="chart-${id}"></canvas>
                             </div>
                         </div>
@@ -233,22 +278,21 @@
             resultsWrapper.appendChild(section);
         }
 
-        function createMetricRow(label, value) {
+        function createRow(label, val) {
             return `
                 <div class="flex justify-between items-center border-b border-gray-50 pb-2">
-                    <span class="text-sm text-gray-500 font-medium">${label}</span>
-                    <span class="text-lg font-bold text-gray-800">${value}</span>
+                    <span class="text-sm text-gray-400 font-medium italic">${label}</span>
+                    <span class="text-lg font-bold text-gray-800">${val}</span>
                 </div>
             `;
         }
 
-        function createSPCCard(label, value) {
-            const val = value.toFixed(3);
-            const colorClass = value < 1.33 ? 'text-red-500' : 'text-blue-600';
+        function createIndexBox(label, value) {
+            const color = value < 1.33 ? 'text-red-500' : 'text-blue-600';
             return `
-                <div class="bg-gray-50 p-4 rounded-2xl text-center">
-                    <div class="text-[10px] text-gray-400 font-bold mb-1 uppercase">${label}</div>
-                    <div class="text-2xl font-black ${colorClass}">${val}</div>
+                <div class="bg-gray-50 p-4 rounded-2xl text-center border border-gray-100">
+                    <div class="text-[10px] text-gray-300 font-bold mb-1 uppercase tracking-tighter">${label}</div>
+                    <div class="text-2xl font-black ${color}">${value.toFixed(3)}</div>
                 </div>
             `;
         }
@@ -256,10 +300,12 @@
         function renderChart(id, mean, std, lsl, usl, values) {
             const ctx = document.getElementById(`chart-${id}`).getContext('2d');
             
+            // 벨 커브 데이터 생성
             const points = [];
-            const minX = Math.min(lsl, ...values) - (std * 2.5);
-            const maxX = Math.max(usl, ...values) + (std * 2.5);
-            const step = (maxX - minX) / 100;
+            const margin = std * 3;
+            const minX = Math.min(lsl, ...values) - margin;
+            const maxX = Math.max(usl, ...values) + margin;
+            const step = (maxX - minX) / 120;
 
             for (let x = minX; x <= maxX; x += step) {
                 const y = (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
@@ -271,56 +317,56 @@
                 data: {
                     datasets: [
                         {
-                            label: 'Normal Dist',
+                            label: 'Normal Distribution',
                             data: points,
                             showLine: true,
                             fill: true,
-                            backgroundColor: 'rgba(0, 122, 255, 0.05)',
+                            backgroundColor: 'rgba(0, 122, 255, 0.03)',
                             borderColor: '#007aff',
                             borderWidth: 3,
                             pointRadius: 0,
-                            tension: 0.4,
-                            zIndex: 1
+                            tension: 0.4
                         },
                         {
-                            label: 'Samples',
+                            label: 'Raw Data',
                             data: values.map(v => ({ x: v, y: 0 })),
-                            pointBackgroundColor: 'rgba(29, 29, 31, 0.3)',
-                            pointRadius: 3,
-                            zIndex: 2
+                            pointBackgroundColor: 'rgba(0, 0, 0, 0.15)',
+                            pointRadius: 2.5
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 2000 },
                     scales: {
                         x: {
                             type: 'linear',
-                            title: { display: true, text: 'Measured Value', font: { weight: '600' } },
-                            grid: { color: '#f0f0f0' }
+                            title: { display: true, text: 'Value Units', font: { weight: '700', size: 10 } },
+                            grid: { color: '#f8f8f8' }
                         },
                         y: { display: false }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: { 
+                            enabled: true,
                             callbacks: {
-                                label: (context) => context.datasetIndex === 1 ? `Value: ${context.parsed.x.toFixed(3)}` : null
+                                label: (item) => item.datasetIndex === 1 ? `Value: ${item.parsed.x.toFixed(4)}` : null
                             }
                         }
                     }
                 },
                 plugins: [{
-                    id: 'specLines',
+                    id: 'limitLines',
                     afterDraw: (chart) => {
                         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-                        const drawLine = (val, label, color) => {
+                        const drawLine = (val, label, color, isDashed = true) => {
                             const xPos = x.getPixelForValue(val);
+                            if (xPos < 0 || xPos > chart.width) return;
+                            
                             ctx.save();
                             ctx.beginPath();
-                            ctx.setLineDash(label.includes('Mean') ? [] : [6, 4]);
+                            if (isDashed) ctx.setLineDash([5, 5]);
                             ctx.moveTo(xPos, top);
                             ctx.lineTo(xPos, bottom);
                             ctx.lineWidth = 2;
@@ -328,33 +374,29 @@
                             ctx.stroke();
                             
                             ctx.fillStyle = color;
-                            ctx.font = 'bold 11px Inter';
+                            ctx.font = 'bold 10px Inter';
                             ctx.textAlign = 'center';
-                            ctx.fillText(label, xPos, top - 10);
+                            ctx.fillText(label, xPos, top - 12);
                             ctx.restore();
                         };
                         drawLine(lsl, `LSL: ${lsl}`, '#ff3b30');
                         drawLine(usl, `USL: ${usl}`, '#ff3b30');
-                        drawLine(mean, `Mean: ${mean.toFixed(2)}`, '#34c759');
+                        drawLine(mean, `Mean: ${mean.toFixed(2)}`, '#34c759', false);
                     }
                 }]
             });
         }
 
-        // Drop zone interaction
+        // Drop zone logic
         const dropZone = document.getElementById('dropZone');
-        ['dragenter', 'dragover'].forEach(name => {
-            dropZone.addEventListener(name, (e) => {
-                e.preventDefault();
-                dropZone.classList.add('border-blue-500', 'bg-blue-50');
-            }, false);
-        });
-        ['dragleave', 'drop'].forEach(name => {
-            dropZone.addEventListener(name, (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-            }, false);
-        });
+        ['dragenter', 'dragover'].forEach(n => dropZone.addEventListener(n, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500', 'bg-blue-50');
+        }, false));
+        ['dragleave', 'drop'].forEach(n => dropZone.addEventListener(n, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        }, false));
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
             if (files.length) {
