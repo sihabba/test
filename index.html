@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPC Analytics Pro - Samsung Style</title>
+    <title>SPC Analytics Pro - Multi Column Dashboard</title>
     <!-- Tailwind CSS for Premium Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for Visualization -->
@@ -24,17 +24,22 @@
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
+            border-radius: 24px;
         }
         .btn-primary {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .btn-primary:hover {
+        .btn-primary:not(:disabled):hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
         }
         .hidden-section { display: none; }
-        canvas { max-width: 100% !important; }
+        canvas { max-height: 450px !important; width: 100% !important; }
+        .column-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+            margin: 4rem 0;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -42,11 +47,10 @@
     <!-- Navigation -->
     <nav class="sticky top-0 z-50 w-full px-6 py-4 bg-white/70 backdrop-blur-md border-b border-gray-100">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="text-2xl font-bold tracking-tight">SPC<span class="samsung-blue">Analytics</span></div>
+            <div class="text-2xl font-bold tracking-tight">SPC<span class="samsung-blue">Analytics</span> <span class="text-xs font-normal text-gray-400 ml-2">v2.0 Multi-Core</span></div>
             <div class="hidden md:flex space-x-8 text-sm font-medium text-gray-600">
-                <a href="#" class="hover:text-blue-600 transition">Dashboard</a>
-                <a href="#" class="hover:text-blue-600 transition">Reports</a>
-                <a href="#" class="hover:text-blue-600 transition">Settings</a>
+                <a href="#" class="hover:text-blue-600 transition">다중 분석 모드</a>
+                <a href="#" class="hover:text-blue-600 transition">보고서 생성</a>
             </div>
         </div>
     </nav>
@@ -55,19 +59,19 @@
         
         <!-- Header Section -->
         <header class="text-center mb-16">
-            <h1 class="text-5xl font-bold tracking-tight mb-4">공정 능력 데이터 분석</h1>
-            <p class="text-xl text-gray-500 font-light">첨부된 엑셀 데이터를 기반으로 정밀한 $C_{pk}$ 및 $P_{pk}$ 분석을 수행합니다.</p>
+            <h1 class="text-5xl font-bold tracking-tight mb-4">다중 공정 능력 분석</h1>
+            <p class="text-xl text-gray-500 font-light italic">모든 열(A, B, C...)의 데이터를 한 번에 분석하고 시각화합니다.</p>
         </header>
 
         <!-- Upload & Controls Section -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <!-- Upload Card -->
-            <div class="glass-card p-8 shadow-sm flex flex-col justify-center items-center border-2 border-dashed border-gray-200 hover:border-blue-400 transition" id="dropZone">
+            <div class="glass-card p-8 shadow-sm flex flex-col justify-center items-center border-2 border-dashed border-gray-200 hover:border-blue-400 transition cursor-pointer" id="dropZone">
                 <div class="mb-4 p-4 bg-blue-50 rounded-full">
-                    <svg class="w-8 h-8 samsung-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="box-7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <svg class="w-8 h-8 samsung-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                 </div>
                 <h3 class="text-lg font-semibold mb-2">데이터 파일 업로드</h3>
-                <p class="text-sm text-gray-400 mb-6 text-center">CSV 또는 Excel 파일을 이곳에 드래그하거나<br>아래 버튼을 눌러 선택하세요.</p>
+                <p class="text-sm text-gray-400 mb-6 text-center italic">열이 여러 개인 파일을 업로드하면<br>자동으로 모든 열을 분석합니다.</p>
                 <input type="file" id="fileInput" class="hidden" accept=".csv">
                 <button onclick="document.getElementById('fileInput').click()" class="px-6 py-2 bg-gray-100 rounded-full text-sm font-semibold hover:bg-gray-200 transition">파일 선택</button>
                 <div id="fileStatus" class="mt-4 text-sm font-medium text-green-600 hidden italic"></div>
@@ -75,78 +79,37 @@
 
             <!-- Start Button Card -->
             <div class="glass-card p-8 shadow-sm flex flex-col justify-center items-center">
-                <h3 class="text-lg font-semibold mb-4 text-center">분석 엔진 가동</h3>
-                <p class="text-sm text-gray-400 mb-8 text-center">데이터가 로드되면 아래 버튼이 활성화됩니다.</p>
+                <h3 class="text-lg font-semibold mb-4 text-center">Batch Analysis Engine</h3>
+                <p class="text-sm text-gray-400 mb-8 text-center italic">업로드된 모든 데이터를 일괄 분석합니다.</p>
                 <button id="startBtn" disabled class="w-full py-4 samsung-bg-blue text-white rounded-2xl font-bold text-lg opacity-50 cursor-not-allowed btn-primary">
-                    분석 시작 (Start Analysis)
+                    분석 시작 (Start Batch Analysis)
                 </button>
             </div>
         </section>
 
-        <!-- Analysis Title (Centered between metrics and graph) -->
-        <div id="resultTitle" class="hidden-section text-center mb-8">
-            <h2 id="dataNameDisplay" class="text-3xl font-bold border-b-2 border-blue-500 inline-block pb-2 px-8 uppercase tracking-widest text-gray-800"></h2>
+        <!-- Container for All Results -->
+        <div id="resultsWrapper" class="space-y-20 pb-20">
+            <!-- 분석 결과 섹션들이 여기에 동적으로 생성됩니다 -->
         </div>
-
-        <!-- Result Dashboard -->
-        <section id="resultSection" class="hidden-section">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
-                <!-- Left: Metrics Table -->
-                <div class="lg:col-span-4 space-y-6">
-                    <div class="glass-card p-6 shadow-lg">
-                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">기본 통계량</h4>
-                        <div class="space-y-4" id="basicMetrics">
-                            <!-- JS Inject -->
-                        </div>
-                    </div>
-                    
-                    <div class="glass-card p-6 shadow-lg border-l-4 border-blue-500">
-                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">공정 능력 지수 (SPC)</h4>
-                        <div class="grid grid-cols-2 gap-4" id="spcMetrics">
-                            <!-- JS Inject -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: Chart Section -->
-                <div class="lg:col-span-8">
-                    <div class="glass-card p-8 shadow-lg min-h-[500px] flex flex-col">
-                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">데이터 정규분포 시각화</h4>
-                        <div class="flex-grow flex items-center justify-center">
-                            <canvas id="normalDistChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </section>
 
     </main>
 
-    <footer class="mt-20 py-10 text-center text-gray-400 text-xs border-t border-gray-100">
-        &copy; 2024 SPC Analytics Pro. Designed for Enterprise Quality Management.
+    <footer class="py-10 text-center text-gray-400 text-xs border-t border-gray-100">
+        &copy; 2024 SPC Analytics Pro. Enterprise Multi-Analysis Dashboard.
     </footer>
 
     <script>
-        // Global variables for data
         let rawData = [];
-        let dataName = "";
-        let LSL = null;
-        let USL = null;
-        let dataValues = [];
+        let columnsCount = 0;
+        let chartInstances = {};
 
-        // UI Elements
         const fileInput = document.getElementById('fileInput');
         const startBtn = document.getElementById('startBtn');
         const fileStatus = document.getElementById('fileStatus');
-        const resultSection = document.getElementById('resultSection');
-        const resultTitle = document.getElementById('resultTitle');
-        const dataNameDisplay = document.getElementById('dataNameDisplay');
+        const resultsWrapper = document.getElementById('resultsWrapper');
 
-        // Event Listeners
         fileInput.addEventListener('change', handleFileUpload);
-        startBtn.addEventListener('click', runAnalysis);
+        startBtn.addEventListener('click', runBatchAnalysis);
 
         function handleFileUpload(e) {
             const file = e.target.files[0];
@@ -154,20 +117,18 @@
 
             Papa.parse(file, {
                 complete: function(results) {
-                    rawData = results.data.filter(row => row.length > 0 && row[0] !== "");
+                    // 빈 행 제거
+                    rawData = results.data.filter(row => row.some(cell => cell !== ""));
+                    
                     if (rawData.length < 4) {
-                        showError("데이터 형식이 올바르지 않습니다. (이름, LSL, USL, 데이터 순서 필요)");
+                        alert("데이터 형식이 올바르지 않습니다. (1행: 이름, 2행: LSL, 3행: USL, 4행+: 데이터)");
                         return;
                     }
 
-                    // Parsing based on user request: 
-                    // Row 0: Name, Row 1: LSL, Row 2: USL, Row 3+: Data
-                    dataName = rawData[0][0];
-                    LSL = parseFloat(rawData[1][0]);
-                    USL = parseFloat(rawData[2][0]);
-                    dataValues = rawData.slice(3).map(row => parseFloat(row[0])).filter(val => !isNaN(val));
+                    // 열 개수 확인
+                    columnsCount = rawData[0].length;
 
-                    fileStatus.innerText = `✓ ${file.name} 로드 완료 (${dataValues.length} 개의 샘플)`;
+                    fileStatus.innerText = `✓ ${file.name} 로드 완료 (${columnsCount}개의 분석 열 감지)`;
                     fileStatus.classList.remove('hidden');
                     startBtn.disabled = false;
                     startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -175,90 +136,129 @@
             });
         }
 
-        function runAnalysis() {
-            if (dataValues.length === 0) return;
+        function runBatchAnalysis() {
+            if (rawData.length === 0) return;
 
-            // Calculations
-            const count = dataValues.length;
-            const sum = dataValues.reduce((a, b) => a + b, 0);
-            const avg = sum / count;
+            // 기존 결과 초기화
+            resultsWrapper.innerHTML = '';
             
-            // Standard Deviation (Sample)
-            const sampleVariance = dataValues.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / (count - 1);
-            const stdev = Math.sqrt(sampleVariance);
-
-            // CP, CPK (Short term)
-            const cp = (USL - LSL) / (6 * stdev);
-            const cpu = (USL - avg) / (3 * stdev);
-            const cpl = (avg - LSL) / (3 * stdev);
-            const cpk = Math.min(cpu, cpl);
-
-            // PP, PPK (Long term - using Population StdDev)
-            const popVariance = dataValues.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / count;
-            const popStdev = Math.sqrt(popVariance);
-            const pp = (USL - LSL) / (6 * popStdev);
-            const ppu = (USL - avg) / (3 * popStdev);
-            const ppl = (avg - LSL) / (3 * popStdev);
-            const ppk = Math.min(ppu, ppl);
-
-            displayMetrics(count, avg, stdev, cp, cpk, pp, ppk);
-            renderDistributionChart(avg, stdev, LSL, USL, dataValues);
-
-            dataNameDisplay.innerText = dataName;
-            resultTitle.classList.remove('hidden-section');
-            resultSection.classList.remove('hidden-section');
-            
-            // Scroll to results
-            resultTitle.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function displayMetrics(count, avg, stdev, cp, cpk, pp, ppk) {
-            const basicContainer = document.getElementById('basicMetrics');
-            const spcContainer = document.getElementById('spcMetrics');
-
-            const basicData = [
-                { label: "샘플 갯수 (N)", value: count.toLocaleString() },
-                { label: "평균 (Mean)", value: avg.toFixed(4) },
-                { label: "표준편차 (Stdev)", value: stdev.toFixed(4) },
-                { label: "하한 규격 (LSL)", value: LSL },
-                { label: "상한 규격 (USL)", value: USL }
-            ];
-
-            const spcData = [
-                { label: "Cp", value: cp.toFixed(3) },
-                { label: "Cpk", value: cpk.toFixed(3) },
-                { label: "Pp", value: pp.toFixed(3) },
-                { label: "Ppk", value: ppk.toFixed(3) }
-            ];
-
-            basicContainer.innerHTML = basicData.map(item => `
-                <div class="flex justify-between items-center border-b border-gray-50 pb-2">
-                    <span class="text-sm text-gray-500">${item.label}</span>
-                    <span class="text-lg font-bold">${item.value}</span>
-                </div>
-            `).join('');
-
-            spcContainer.innerHTML = spcData.map(item => `
-                <div class="bg-gray-50 p-4 rounded-xl text-center">
-                    <div class="text-xs text-gray-400 font-bold mb-1">${item.label}</div>
-                    <div class="text-2xl font-extrabold samsung-blue">${item.value}</div>
-                </div>
-            `).join('');
-        }
-
-        let chartInstance = null;
-
-        function renderDistributionChart(mean, std, lsl, usl, values) {
-            const ctx = document.getElementById('normalDistChart').getContext('2d');
-            
-            if (chartInstance) {
-                chartInstance.destroy();
+            // 각 열별로 분석 수행
+            for (let i = 0; i < columnsCount; i++) {
+                analyzeColumn(i);
             }
 
-            // Generate points for Normal Distribution Curve
+            // 첫 번째 결과로 부드럽게 스크롤
+            resultsWrapper.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function analyzeColumn(colIndex) {
+            const name = rawData[0][colIndex] || `Column ${colIndex + 1}`;
+            const lsl = parseFloat(rawData[1][colIndex]);
+            const usl = parseFloat(rawData[2][colIndex]);
+            const values = rawData.slice(3).map(row => parseFloat(row[colIndex])).filter(val => !isNaN(val));
+
+            if (values.length === 0) return;
+
+            // 기초 통계 계산
+            const count = values.length;
+            const avg = values.reduce((a, b) => a + b, 0) / count;
+            const sampleVariance = values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / (count - 1);
+            const stdev = Math.sqrt(sampleVariance);
+
+            // SPC 계산
+            const cp = (usl - lsl) / (6 * stdev);
+            const cpk = Math.min((usl - avg) / (3 * stdev), (avg - lsl) / (3 * stdev));
+            
+            const popVariance = values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / count;
+            const popStdev = Math.sqrt(popVariance);
+            const pp = (usl - lsl) / (6 * popStdev);
+            const ppk = Math.min((usl - avg) / (3 * popStdev), (avg - lsl) / (3 * popStdev));
+
+            // UI 생성
+            createResultSection(colIndex, name, count, avg, stdev, lsl, usl, cp, cpk, pp, ppk);
+            
+            // 그래프 렌더링 (DOM 생성 후 실행을 위해 setTimeout 사용)
+            setTimeout(() => {
+                renderChart(colIndex, avg, stdev, lsl, usl, values);
+            }, 0);
+        }
+
+        function createResultSection(id, name, n, mean, std, lsl, usl, cp, cpk, pp, ppk) {
+            const section = document.createElement('div');
+            section.className = 'animate-in fade-in duration-700';
+            section.innerHTML = `
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-bold border-b-2 border-blue-500 inline-block pb-2 px-12 uppercase tracking-widest text-gray-800">
+                        ${name}
+                    </h2>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <!-- Left: Metrics -->
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="glass-card p-6 shadow-lg">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Statistical Summary</h4>
+                            <div class="space-y-4">
+                                ${createMetricRow("샘플 갯수 (N)", n.toLocaleString())}
+                                ${createMetricRow("평균 (Mean)", mean.toFixed(4))}
+                                ${createMetricRow("표준편차 (Stdev)", std.toFixed(4))}
+                                ${createMetricRow("LSL", lsl)}
+                                ${createMetricRow("USL", usl)}
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card p-6 shadow-lg border-l-8 border-blue-500">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Process Capability</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                ${createSPCCard("Cp", cp)}
+                                ${createSPCCard("Cpk", cpk)}
+                                ${createSPCCard("Pp", pp)}
+                                ${createSPCCard("Ppk", ppk)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Chart -->
+                    <div class="lg:col-span-8">
+                        <div class="glass-card p-8 shadow-lg h-full flex flex-col">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Distribution Analysis</h4>
+                            <div class="flex-grow">
+                                <canvas id="chart-${id}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${id < columnsCount - 1 ? '<div class="column-divider"></div>' : ''}
+            `;
+            resultsWrapper.appendChild(section);
+        }
+
+        function createMetricRow(label, value) {
+            return `
+                <div class="flex justify-between items-center border-b border-gray-50 pb-2">
+                    <span class="text-sm text-gray-500 font-medium">${label}</span>
+                    <span class="text-lg font-bold text-gray-800">${value}</span>
+                </div>
+            `;
+        }
+
+        function createSPCCard(label, value) {
+            const val = value.toFixed(3);
+            const colorClass = value < 1.33 ? 'text-red-500' : 'text-blue-600';
+            return `
+                <div class="bg-gray-50 p-4 rounded-2xl text-center">
+                    <div class="text-[10px] text-gray-400 font-bold mb-1 uppercase">${label}</div>
+                    <div class="text-2xl font-black ${colorClass}">${val}</div>
+                </div>
+            `;
+        }
+
+        function renderChart(id, mean, std, lsl, usl, values) {
+            const ctx = document.getElementById(`chart-${id}`).getContext('2d');
+            
             const points = [];
-            const minX = Math.min(lsl, ...values) - (std * 2);
-            const maxX = Math.max(usl, ...values) + (std * 2);
+            const minX = Math.min(lsl, ...values) - (std * 2.5);
+            const maxX = Math.max(usl, ...values) + (std * 2.5);
             const step = (maxX - minX) / 100;
 
             for (let x = minX; x <= maxX; x += step) {
@@ -266,12 +266,12 @@
                 points.push({ x: x, y: y });
             }
 
-            chartInstance = new Chart(ctx, {
+            new Chart(ctx, {
                 type: 'scatter',
                 data: {
                     datasets: [
                         {
-                            label: 'Normal Distribution',
+                            label: 'Normal Dist',
                             data: points,
                             showLine: true,
                             fill: true,
@@ -279,46 +279,48 @@
                             borderColor: '#007aff',
                             borderWidth: 3,
                             pointRadius: 0,
-                            tension: 0.4
+                            tension: 0.4,
+                            zIndex: 1
                         },
                         {
-                            label: 'Actual Data (Samples)',
+                            label: 'Samples',
                             data: values.map(v => ({ x: v, y: 0 })),
                             pointBackgroundColor: 'rgba(29, 29, 31, 0.3)',
-                            pointRadius: 3
+                            pointRadius: 3,
+                            zIndex: 2
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 2000 },
                     scales: {
                         x: {
                             type: 'linear',
-                            position: 'bottom',
-                            title: { display: true, text: 'Value', font: { weight: 'bold' } },
-                            grid: { display: false }
+                            title: { display: true, text: 'Measured Value', font: { weight: '600' } },
+                            grid: { color: '#f0f0f0' }
                         },
-                        y: {
-                            display: false,
-                            grid: { display: false }
-                        }
+                        y: { display: false }
                     },
                     plugins: {
                         legend: { display: false },
-                        tooltip: { enabled: true }
+                        tooltip: { 
+                            callbacks: {
+                                label: (context) => context.datasetIndex === 1 ? `Value: ${context.parsed.x.toFixed(3)}` : null
+                            }
+                        }
                     }
                 },
                 plugins: [{
-                    id: 'verticalLines',
+                    id: 'specLines',
                     afterDraw: (chart) => {
                         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-                        
-                        const drawSpecLine = (val, label, color) => {
+                        const drawLine = (val, label, color) => {
                             const xPos = x.getPixelForValue(val);
                             ctx.save();
                             ctx.beginPath();
-                            ctx.setLineDash([5, 5]);
+                            ctx.setLineDash(label.includes('Mean') ? [] : [6, 4]);
                             ctx.moveTo(xPos, top);
                             ctx.lineTo(xPos, bottom);
                             ctx.lineWidth = 2;
@@ -326,34 +328,34 @@
                             ctx.stroke();
                             
                             ctx.fillStyle = color;
-                            ctx.font = 'bold 12px Inter';
+                            ctx.font = 'bold 11px Inter';
                             ctx.textAlign = 'center';
                             ctx.fillText(label, xPos, top - 10);
                             ctx.restore();
                         };
-
-                        drawSpecLine(lsl, `LSL: ${lsl}`, '#ff3b30');
-                        drawSpecLine(usl, `USL: ${usl}`, '#ff3b30');
-                        drawSpecLine(mean, `Mean: ${mean.toFixed(2)}`, '#34c759');
+                        drawLine(lsl, `LSL: ${lsl}`, '#ff3b30');
+                        drawLine(usl, `USL: ${usl}`, '#ff3b30');
+                        drawLine(mean, `Mean: ${mean.toFixed(2)}`, '#34c759');
                     }
                 }]
             });
         }
 
-        function showError(msg) {
-            alert(msg);
-        }
-
-        // Drop zone styling
+        // Drop zone interaction
         const dropZone = document.getElementById('dropZone');
         ['dragenter', 'dragover'].forEach(name => {
-            dropZone.addEventListener(name, () => dropZone.classList.add('border-blue-500', 'bg-blue-50'), false);
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            }, false);
         });
         ['dragleave', 'drop'].forEach(name => {
-            dropZone.addEventListener(name, () => dropZone.classList.remove('border-blue-500', 'bg-blue-50'), false);
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            }, false);
         });
         dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
             const files = e.dataTransfer.files;
             if (files.length) {
                 fileInput.files = files;
