@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPC Analytics Pro - Mode Enhanced</title>
+    <title>SPC Analytics Pro - Mode & Multi-Core</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -11,16 +11,20 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            background-color: #f5f5f7;
             color: #1d1d1f;
         }
         .samsung-blue { color: #007aff; }
         .samsung-bg-blue { background-color: #007aff; }
         .glass-card {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             border-radius: 24px;
+        }
+        .btn-primary:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
         }
         .column-divider {
             height: 1px;
@@ -28,119 +32,131 @@
             margin: 4rem 0;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-result { animation: fadeIn 0.6s ease-out forwards; }
+        .animate-result { animation: fadeIn 0.7s ease-out forwards; }
+        canvas { min-height: 350px !important; width: 100% !important; }
     </style>
 </head>
 <body class="antialiased">
 
-    <nav class="sticky top-0 z-50 w-full px-6 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <nav class="sticky top-0 z-50 w-full px-6 py-4 bg-white/70 backdrop-blur-md border-b border-gray-100">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="text-2xl font-black tracking-tighter">SPC<span class="samsung-blue">PRO</span></div>
-            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Statistical Mode Analysis</div>
+            <div class="text-2xl font-black tracking-tighter">SPC<span class="samsung-blue">PRO</span> <span class="text-xs font-normal text-gray-400 ml-2 italic underline">Analytics Enterprise</span></div>
         </div>
     </nav>
 
     <main class="max-w-7xl mx-auto px-6 py-12">
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-black tracking-tight mb-2">Process Capability Dashboard</h1>
-            <p class="text-gray-500 font-medium">데이터의 평균, 규격, 그리고 최빈값을 정밀 분석합니다.</p>
+        <header class="text-center mb-16">
+            <h1 class="text-5xl font-black tracking-tight mb-4 italic text-gray-900">Process Capability Analysis</h1>
+            <p class="text-lg text-gray-400 font-medium italic">고정밀 최빈값(Mode) 엔진이 탑재된 통합 공정 분석 대시보드</p>
         </header>
 
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <div class="glass-card p-8 border-2 border-dashed border-gray-200 hover:border-blue-400 transition cursor-pointer text-center" id="dropZone">
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div class="glass-card p-10 shadow-sm flex flex-col justify-center items-center border-2 border-dashed border-gray-200 hover:border-blue-400 transition cursor-pointer" id="dropZone">
+                <div class="mb-4 p-4 bg-blue-50 rounded-full">
+                    <svg class="w-10 h-10 samsung-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold mb-1">데이터 업로드</h3>
+                <p class="text-sm text-gray-400 mb-6 text-center italic">CSV 파일을 드래그하거나 클릭하세요.</p>
                 <input type="file" id="fileInput" class="hidden" accept=".csv">
-                <div class="text-blue-500 mb-2">● CSV 드래그 또는 클릭</div>
-                <p class="text-sm text-gray-400 italic">1행:제목 | 2행:LSL | 3행:USL | 4행+:데이터</p>
+                <button onclick="document.getElementById('fileInput').click()" class="px-8 py-2.5 bg-gray-900 text-white rounded-full text-sm font-bold hover:bg-black transition">파일 선택</button>
+                <div id="fileStatus" class="mt-4 text-sm font-black text-blue-600 hidden"></div>
             </div>
-            <button id="startBtn" disabled class="glass-card samsung-bg-blue text-white font-black text-xl opacity-50 cursor-not-allowed transition hover:brightness-110">
-                분석 실행 (RUN ANALYSIS)
-            </button>
+
+            <div class="glass-card p-10 shadow-sm flex flex-col justify-center items-center text-center">
+                <h3 class="text-xl font-bold mb-2 italic tracking-tighter uppercase">Analysis Engine v2.5</h3>
+                <p class="text-sm text-gray-400 mb-8 italic">최빈값(Mode) 기반의 비대칭 분포 분석을 시작합니다.</p>
+                <button id="startBtn" disabled class="w-full py-5 samsung-bg-blue text-white rounded-2xl font-black text-xl opacity-50 cursor-not-allowed btn-primary tracking-widest shadow-xl transition-all">
+                    분석 실행 (RUN ANALYSIS)
+                </button>
+            </div>
         </section>
 
         <div id="summaryDashboard" class="hidden mb-12 animate-result">
-            <div class="glass-card p-6 border-l-8 border-blue-600 shadow-xl">
-                <h3 class="text-xs font-black text-gray-400 uppercase mb-4 tracking-widest">Quick Overview (Cpk)</h3>
+            <div class="glass-card p-8 border-l-8 border-blue-600 shadow-xl">
+                <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Total Analysis Overview (Cpk)</h3>
                 <div id="summaryCards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
             </div>
         </div>
 
-        <div id="resultsWrapper" class="space-y-12"></div>
+        <div id="resultsWrapper" class="space-y-16 pb-20"></div>
     </main>
+
+    <footer class="py-12 text-center text-gray-400 text-xs border-t border-gray-100 italic font-medium">
+        &copy; 2026 SPC Analytics Enterprise Mode-Edition.
+    </footer>
 
     <script>
         let rawData = [];
         let columnsCount = 0;
+        let chartInstances = {}; // 차트 객체 관리용
 
         const fileInput = document.getElementById('fileInput');
         const startBtn = document.getElementById('startBtn');
+        const fileStatus = document.getElementById('fileStatus');
         const resultsWrapper = document.getElementById('resultsWrapper');
         const summaryDashboard = document.getElementById('summaryDashboard');
         const summaryCards = document.getElementById('summaryCards');
-        const dropZone = document.getElementById('dropZone');
 
-        // 파일 업로드 처리
-        dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => handleFile(e.target.files[0]);
-        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('bg-blue-50'); };
-        dropZone.ondragleave = () => dropZone.classList.remove('bg-blue-50');
-        dropZone.ondrop = (e) => {
-            e.preventDefault();
-            handleFile(e.dataTransfer.files[0]);
-        };
+        fileInput.addEventListener('change', handleFileUpload);
+        startBtn.addEventListener('click', runBatchAnalysis);
 
-        function handleFile(file) {
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
             if (!file) return;
+
             Papa.parse(file, {
-                complete: (results) => {
+                skipEmptyLines: true,
+                complete: function(results) {
                     rawData = results.data.filter(row => row.some(cell => cell.trim() !== ""));
-                    if (rawData.length < 4) return alert("데이터 형식이 부족합니다.");
+                    if (rawData.length < 4) {
+                        alert("데이터 구조가 올바르지 않습니다. (1행: 제목, 2행: LSL, 3행: USL, 4행+: 데이터)");
+                        return;
+                    }
                     columnsCount = rawData[0].length;
+                    fileStatus.innerText = `✓ 로드 완료: ${file.name} (${columnsCount} Columns)`;
+                    fileStatus.classList.remove('hidden');
                     startBtn.disabled = false;
                     startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    dropZone.innerHTML = `<div class='text-blue-600 font-bold'>✓ ${file.name} 로드됨</div>`;
                 }
             });
         }
 
-        // 최빈값 계산 로직 (구간화 기법 적용)
-        function calculateMode(values) {
-            if (values.length === 0) return null;
-            
-            // 데이터가 소수점일 경우 빈도가 겹치지 않으므로, 정밀도를 조절하여 그룹화
-            // 여기서는 소수점 2째자리까지 반올림하여 빈도를 체크합니다.
-            const counts = {};
-            let maxCount = 0;
-            let modeVal = values[0];
-
-            values.forEach(v => {
-                const rounded = Math.round(v * 100) / 100; // 소수점 2자리 그룹화
-                counts[rounded] = (counts[rounded] || 0) + 1;
-                if (counts[rounded] > maxCount) {
-                    maxCount = counts[rounded];
-                    modeVal = rounded;
-                }
-            });
-            return modeVal;
-        }
-
-        startBtn.onclick = () => {
+        function runBatchAnalysis() {
             resultsWrapper.innerHTML = '';
             summaryCards.innerHTML = '';
             summaryDashboard.classList.remove('hidden');
 
             for (let i = 0; i < columnsCount; i++) {
-                analyze(i);
+                analyzeColumn(i);
             }
-        };
+        }
 
-        function analyze(idx) {
-            const title = rawData[0][idx] || `Item ${idx+1}`;
-            const lsl = parseFloat(rawData[1][idx]);
-            const usl = parseFloat(rawData[2][idx]);
-            const values = rawData.slice(3).map(row => parseFloat(row[idx])).filter(v => !isNaN(v));
+        // 최빈값 계산 (소수점 4자리 기준 그룹화)
+        function calculateMode(arr) {
+            if (!arr.length) return null;
+            const frequency = {};
+            let maxCount = 0;
+            let mode = arr[0];
+            
+            arr.forEach(val => {
+                const key = Math.round(val * 10000) / 10000;
+                frequency[key] = (frequency[key] || 0) + 1;
+                if (frequency[key] > maxCount) {
+                    maxCount = frequency[key];
+                    mode = parseFloat(key);
+                }
+            });
+            return mode;
+        }
+
+        function analyzeColumn(colIndex) {
+            const title = rawData[0][colIndex] || `Column ${colIndex + 1}`;
+            const lsl = parseFloat(rawData[1][colIndex]);
+            const usl = parseFloat(rawData[2][colIndex]);
+            const values = rawData.slice(3).map(row => parseFloat(row[colIndex])).filter(v => !isNaN(v));
 
             if (values.length < 2) return;
 
@@ -148,99 +164,140 @@
             const mean = values.reduce((a, b) => a + b, 0) / n;
             const mode = calculateMode(values);
             const std = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1));
+
+            // Cpk 계산 (보수적 접근)
+            const cpk = isNaN(lsl) && isNaN(usl) ? 0 : 
+                        isNaN(lsl) ? (usl - mean) / (3 * std) :
+                        isNaN(usl) ? (mean - lsl) / (3 * std) :
+                        Math.min((usl - mean) / (3 * std), (mean - lsl) / (3 * std));
+
+            addSummaryCard(title, cpk);
+            createResultSection(colIndex, title, n, mean, mode, std, lsl, usl, cpk);
             
-            const cpk = Math.min((usl - mean) / (3 * std), (mean - lsl) / (3 * std));
+            setTimeout(() => renderChart(colIndex, mean, mode, std, lsl, usl, values), 100);
+        }
 
-            // Summary Card
-            const sCard = document.createElement('div');
-            sCard.className = 'bg-gray-50 p-3 rounded-xl border border-gray-100 text-center';
-            sCard.innerHTML = `<div class="text-[10px] font-bold text-gray-400 truncate">${title}</div><div class="text-lg font-black text-blue-600">${cpk.toFixed(2)}</div>`;
-            summaryCards.appendChild(sCard);
+        function addSummaryCard(title, cpk) {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center';
+            const color = cpk >= 1.33 ? 'text-blue-600' : 'text-red-500';
+            card.innerHTML = `
+                <div class="text-[10px] font-black text-gray-400 uppercase truncate w-full text-center mb-1">${title}</div>
+                <div class="text-xl font-black ${color}">${cpk.toFixed(2)}</div>
+            `;
+            summaryCards.appendChild(card);
+        }
 
-            // UI Section
+        function createResultSection(id, title, n, mean, mode, std, lsl, usl, cpk) {
             const section = document.createElement('div');
-            section.className = 'animate-result glass-card p-8 shadow-lg mb-12';
+            section.className = 'animate-result glass-card p-8 shadow-sm';
             section.innerHTML = `
-                <h2 class="text-2xl font-black mb-6 text-gray-800 border-l-4 border-blue-500 pl-4">${title}</h2>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="space-y-3">
-                        <div class="flex justify-between p-3 bg-gray-50 rounded-lg"><span>평균 (Mean)</span><b class="text-green-600">${mean.toFixed(4)}</b></div>
-                        <div class="flex justify-between p-3 bg-purple-50 rounded-lg"><span>최빈값 (Mode)</span><b class="text-purple-600">${mode.toFixed(4)}</b></div>
-                        <div class="flex justify-between p-3 bg-gray-50 rounded-lg"><span>표준편차 (Std)</span><b>${std.toFixed(4)}</b></div>
-                        <div class="flex justify-between p-3 bg-red-50 rounded-lg"><span>규격 (LSL/USL)</span><b>${lsl}/${usl}</b></div>
-                        <div class="mt-4 p-4 samsung-bg-blue text-white rounded-xl text-center">
-                            <div class="text-xs opacity-80">Process Capability (Cpk)</div>
-                            <div class="text-3xl font-black">${cpk.toFixed(3)}</div>
+                <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4 border-b border-gray-50 pb-6">
+                    <h2 class="text-3xl font-black uppercase tracking-tighter text-gray-800 border-l-8 border-blue-500 pl-4">${title}</h2>
+                    <div class="px-6 py-2 rounded-full ${cpk >= 1.33 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'} font-black text-xs uppercase tracking-widest">
+                        Status: ${cpk >= 1.33 ? 'Capable' : 'Critical'}
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="bg-gray-50/50 p-6 rounded-3xl border border-white">
+                            <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 border-l-4 border-gray-200 pl-3">Statistics</h4>
+                            <div class="space-y-4">
+                                ${createRow("Count (N)", n.toLocaleString())}
+                                ${createRow("Mean (μ)", mean.toFixed(4), "text-green-600")}
+                                ${createRow("Mode (Mo)", mode.toFixed(4), "text-purple-600")}
+                                ${createRow("Stdev (σ)", std.toFixed(4))}
+                                ${createRow("LSL / USL", `${lsl} / ${usl}`, "text-red-400")}
+                            </div>
+                        </div>
+                        <div class="samsung-bg-blue p-8 rounded-3xl text-white shadow-xl shadow-blue-100">
+                            <h4 class="text-xs font-bold opacity-70 uppercase tracking-widest mb-2">Process Index (Cpk)</h4>
+                            <div class="text-5xl font-black">${cpk.toFixed(3)}</div>
                         </div>
                     </div>
-                    <div class="lg:col-span-2 h-[300px]">
-                        <canvas id="chart-${idx}"></canvas>
+                    <div class="lg:col-span-8 flex flex-col">
+                        <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-3">Distribution & Mode Alignment</h4>
+                        <div class="flex-grow">
+                            <canvas id="chart-${id}"></canvas>
+                        </div>
                     </div>
                 </div>
             `;
             resultsWrapper.appendChild(section);
+        }
 
-            renderChart(idx, mean, mode, std, lsl, usl, values);
+        function createRow(label, val, colorClass = "text-gray-800") {
+            return `<div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-xs text-gray-400 font-bold uppercase tracking-tighter">${label}</span>
+                        <span class="text-lg font-black ${colorClass}">${val}</span>
+                    </div>`;
         }
 
         function renderChart(id, mean, mode, std, lsl, usl, values) {
             const ctx = document.getElementById(`chart-${id}`).getContext('2d');
+            if (chartInstances[id]) chartInstances[id].destroy();
+
             const points = [];
-            const minX = Math.min(lsl, ...values) - (std);
-            const maxX = Math.max(usl, ...values) + (std);
+            const margin = std * 4;
+            const minX = Math.min(lsl, ...values) - margin;
+            const maxX = Math.max(usl, ...values) + margin;
+
             for (let x = minX; x <= maxX; x += (maxX - minX) / 100) {
                 const y = (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
                 points.push({ x, y });
             }
 
-            new Chart(ctx, {
+            chartInstances[id] = new Chart(ctx, {
                 type: 'scatter',
                 data: {
-                    datasets: [{
-                        label: '분포',
-                        data: points,
-                        showLine: true,
-                        borderColor: '#007aff',
-                        borderWidth: 3,
-                        pointRadius: 0,
-                        fill: true,
-                        backgroundColor: 'rgba(0, 122, 255, 0.05)',
-                        tension: 0.4
-                    }, {
-                        label: '실제데이터',
-                        data: values.map(v => ({ x: v, y: 0 })),
-                        pointBackgroundColor: 'rgba(0,0,0,0.2)',
-                        pointRadius: 2
-                    }]
+                    datasets: [
+                        { label: 'Dist', data: points, showLine: true, fill: true, backgroundColor: 'rgba(0, 122, 255, 0.04)', borderColor: '#007aff', borderWidth: 3, pointRadius: 0, tension: 0.4 },
+                        { label: 'Data', data: values.map(v => ({ x: v, y: 0 })), pointBackgroundColor: 'rgba(0, 0, 0, 0.1)', pointRadius: 3 }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { y: { display: false }, x: { grid: { display: false } } },
+                    scales: { x: { type: 'linear', grid: { display: false } }, y: { display: false } },
                     plugins: { legend: { display: false } }
                 },
                 plugins: [{
+                    id: 'indicators',
                     afterDraw: (chart) => {
                         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-                        const draw = (val, label, color, dash = false) => {
+                        const draw = (val, label, color, dashed = true) => {
                             const px = x.getPixelForValue(val);
+                            if (px < 0 || px > chart.width) return;
                             ctx.save();
                             ctx.beginPath();
-                            if (dash) ctx.setLineDash([5, 5]);
+                            if (dashed) ctx.setLineDash([5, 5]);
                             ctx.moveTo(px, top); ctx.lineTo(px, bottom);
-                            ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
-                            ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
-                            ctx.fillText(label, px + 5, top + 15);
+                            ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.stroke();
+                            ctx.fillStyle = color; ctx.font = 'bold 10px Inter';
+                            ctx.fillText(label, px + 4, top + 10);
                             ctx.restore();
                         };
-                        draw(lsl, 'LSL', '#ff3b30', true);
-                        draw(usl, 'USL', '#ff3b30', true);
-                        draw(mean, 'MEAN', '#34c759');
-                        draw(mode, 'MODE', '#af52de'); // 최빈값 보라색 표시
+                        draw(lsl, 'LSL', '#ff3b30');
+                        draw(usl, 'USL', '#ff3b30');
+                        draw(mean, 'MEAN', '#34c759', false);
+                        draw(mode, 'MODE', '#af52de', true); // 보라색 최빈값 선
                     }
                 }]
             });
         }
+
+        // Drop zone logic
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover'].forEach(n => dropZone.addEventListener(n, e => {
+            e.preventDefault(); dropZone.classList.add('border-blue-500', 'bg-blue-50');
+        }));
+        ['dragleave', 'drop'].forEach(n => dropZone.addEventListener(n, e => {
+            e.preventDefault(); dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        }));
+        dropZone.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if (files.length) { fileInput.files = files; handleFileUpload({ target: { files: files } }); }
+        });
     </script>
 </body>
 </html>
